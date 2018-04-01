@@ -20,11 +20,10 @@
             LeftClickCommand="{Binding Path=LeftClick}"
             TrayRightMouseDown="TaskbarIcon_TrayRightMouseDown">
 
-            <!-- Set a simple context menu  -->
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Stop after current"  IsCheckable="True" IsChecked="{Binding Path=StopAfterCurrent, Mode=TwoWay}" />
-                    <MenuItem Header="Shut down after current" IsCheckable="True" IsChecked="{Binding Path=ShutDownAfterCurrent, Mode=TwoWay}" />
+                    <MenuItem Header="Stop after current"  IsCheckable="True" IsChecked="{Binding Path=StopAfterCurrent, Mode=TwoWay}" IsEnabled="{Binding Path=IsConnected}"/>
+                    <MenuItem Header="Shut down after current" IsCheckable="True" IsChecked="{Binding Path=ShutDownAfterCurrent, Mode=TwoWay}" IsEnabled="{Binding Path=IsConnected}"/>
                     <Separator />
                     <MenuItem Header="Clear selection" Click="OnClearSelectionClick" />
                     <Separator Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />

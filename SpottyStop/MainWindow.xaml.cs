@@ -106,7 +106,7 @@ namespace SpottyStop
                 UpdateTrack(status.Track);
         }
 
-        public async void UpdateTrack(Track track)
+        public void UpdateTrack(Track track)
         {
             _currentTrack = track;
 
