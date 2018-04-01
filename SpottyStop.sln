@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2015
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpottyStop", "SpottyStop\SpottyStop.csproj", "{B3C229C9-731B-4EF6-9AB9-7E9D78C1DB5A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpotifyAPI", "SpotifyAPI\SpotifyAPI.csproj", "{EBBE35E2-7B91-4D7D-B8FC-3A0472F5119D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B3C229C9-731B-4EF6-9AB9-7E9D78C1DB5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3C229C9-731B-4EF6-9AB9-7E9D78C1DB5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3C229C9-731B-4EF6-9AB9-7E9D78C1DB5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3C229C9-731B-4EF6-9AB9-7E9D78C1DB5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBBE35E2-7B91-4D7D-B8FC-3A0472F5119D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBBE35E2-7B91-4D7D-B8FC-3A0472F5119D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBBE35E2-7B91-4D7D-B8FC-3A0472F5119D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBBE35E2-7B91-4D7D-B8FC-3A0472F5119D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8B0CB39D-B5E7-43A3-AAAC-5577492CA7E7}
+	EndGlobalSection
+EndGlobal
