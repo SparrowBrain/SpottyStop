@@ -50,7 +50,7 @@ namespace SpottyStop
             if (ShutDownAfterCurrent)
             {
                 Process.Start("shutdown", "/s /t 10");
-                Application.Current.Shutdown();
+                await _spotify.Pause();
             }
 
             StopAfterCurrent = false;
