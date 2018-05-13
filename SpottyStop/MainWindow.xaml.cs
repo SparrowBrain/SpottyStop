@@ -73,7 +73,16 @@ namespace SpottyStop
                 return;
             }
 
-            bool successful = _spotify.Connect();
+            bool successful;
+            try
+            {
+                successful = _spotify.Connect();
+            }
+            catch
+            {
+                successful = false;
+            }
+
             if (successful)
             {
                 IsConnected = true;
