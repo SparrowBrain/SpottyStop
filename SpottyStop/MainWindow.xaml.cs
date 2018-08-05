@@ -1,11 +1,14 @@
 ﻿using SpotifyAPI.Local;
-using SpotifyAPI.Local.Models;
+using SpotifyAPI.Web;
+using SpotifyAPI.Web.Auth;
+using SpotifyAPI.Web.Enums;
 using SpottyStop.Annotations;
 using SpottyStop.Infrastructure;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -17,8 +20,7 @@ namespace SpottyStop
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private readonly SpotifyLocalAPI _spotify;
-        private Track _currentTrack;
+        private SpotifyWebAPI _spotify;
         private bool _stopAfterCurrent;
         private bool _shutDownAfterCurrent;
         private string _toolTip;
@@ -26,57 +28,52 @@ namespace SpottyStop
         private AfterCurrent _afterCurrent;
         private bool _isConnected;
 
+        private CancellationTokenSource _nextActionCancellationSource;
+        private CancellationTokenSource _retryConnectCancellationSource;
+
         public MainWindow()
         {
             InitializeComponent();
 
-            _spotify = new SpotifyLocalAPI();
-            _spotify.OnTrackChange += _spotify_OnTrackChange;
+            _nextActionCancellationSource = new CancellationTokenSource();
+            _retryConnectCancellationSource = new CancellationTokenSource();
         }
 
-        private async void _spotify_OnTrackChange(object sender, TrackChangeEventArgs e)
-        {
-            await ExecuteAfterCurrentActions();
-            UpdateTrack(e.NewTrack);
-        }
-
-        private async Task ExecuteAfterCurrentActions()
+        private void ExecuteAfterCurrentActions()
         {
             if (StopAfterCurrent)
             {
-                await _spotify.Pause();
+                _spotify.PausePlayback();
             }
 
             if (ShutDownAfterCurrent)
             {
+                _spotify.PausePlayback();
                 Process.Start("shutdown", "/s /t 10");
-                await _spotify.Pause();
             }
 
             StopAfterCurrent = false;
             ShutDownAfterCurrent = false;
+            SetToolTipText();
         }
 
-        public void Connect()
+        public async Task Connect()
         {
+            _retryConnectCancellationSource.Cancel();
+            _retryConnectCancellationSource = new CancellationTokenSource();
+
             if (!SpotifyLocalAPI.IsSpotifyRunning())
             {
                 IsConnected = false;
-                RetryConnect();
-                return;
-            }
-
-            if (!SpotifyLocalAPI.IsSpotifyWebHelperRunning())
-            {
-                IsConnected = false;
-                RetryConnect();
+                await RetryConnect();
                 return;
             }
 
             bool successful;
             try
             {
-                successful = _spotify.Connect();
+                _spotify = await RunAuthentication();
+                successful = true;
             }
             catch
             {
@@ -86,45 +83,25 @@ namespace SpottyStop
             if (successful)
             {
                 IsConnected = true;
-                UpdateInfos();
-                _spotify.ListenForEvents = true;
+                SetToolTipText();
             }
             else
             {
                 IsConnected = false;
-                RetryConnect();
+                await RetryConnect();
             }
         }
 
-        private void RetryConnect()
+        private async Task RetryConnect()
         {
-            Task.Factory.StartNew(async () =>
+            var cancellationToken = _retryConnectCancellationSource.Token;
+            await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(30));
-                Connect();
-            });
-        }
-
-        public void UpdateInfos()
-        {
-            StatusResponse status = _spotify.GetStatus();
-            if (status == null)
                 return;
+            }
 
-            if (status.Track != null) //Update track infos
-                UpdateTrack(status.Track);
-        }
-
-        public void UpdateTrack(Track track)
-        {
-            _currentTrack = track;
-
-            if (track.IsAd())
-                return; //Don't process further, maybe null values
-
-            SpotifyUri uri = track.TrackResource.ParseUri();
-
-            SetToolTipText();
+            await Connect();
         }
 
         public bool StopAfterCurrent
@@ -164,16 +141,38 @@ namespace SpottyStop
             if (ShutDownAfterCurrent)
             {
                 AfterCurrent = AfterCurrent.ShutDown;
+                QueueAction();
                 return;
             }
 
             if (StopAfterCurrent)
             {
                 AfterCurrent = AfterCurrent.Stop;
+                QueueAction();
                 return;
             }
 
+            _nextActionCancellationSource.Cancel();
             AfterCurrent = AfterCurrent.Nothing;
+        }
+
+        private void QueueAction()
+        {
+            _nextActionCancellationSource = new CancellationTokenSource();
+
+            Task.Factory.StartNew(async () =>
+            {
+                var progressMs = _spotify.GetPlayback().ProgressMs;
+                var timeLeft = _spotify.GetPlayback().Item.DurationMs - progressMs;
+
+                await Task.Delay(timeLeft);
+                if (_nextActionCancellationSource.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                ExecuteAfterCurrentActions();
+            }, _nextActionCancellationSource.Token);
         }
 
         public string ToolTipText
@@ -248,25 +247,21 @@ namespace SpottyStop
                 return;
             }
 
-            if (_currentTrack == null)
-            {
-                ToolTipText = "Nothing's playing";
-                return;
-            }
-
             if (ShutDownAfterCurrent)
             {
-                ToolTipText = $"Shutting down after: {_currentTrack.ArtistResource.Name} - {_currentTrack.TrackResource.Name}";
+                var track = _spotify.GetPlayingTrack().Item;
+                ToolTipText = $"Shutting down after: {track.Artists[0].Name} - {track.Name}";
                 return;
             }
 
             if (StopAfterCurrent)
             {
-                ToolTipText = $"Stopping after: {_currentTrack.ArtistResource.Name} - {_currentTrack.TrackResource.Name}";
+                var track = _spotify.GetPlayingTrack().Item;
+                ToolTipText = $"Stopping after: {track.Artists[0].Name} - {track.Name}";
                 return;
             }
 
-            ToolTipText = $"{_currentTrack.ArtistResource.Name} - {_currentTrack.TrackResource.Name}";
+            ToolTipText = "All is good";
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -279,7 +274,7 @@ namespace SpottyStop
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            Connect();
+            Task.Factory.StartNew(async () => { await Connect(); });
         }
 
         private void OnExitClick(object sender, RoutedEventArgs e)
@@ -294,7 +289,26 @@ namespace SpottyStop
 
         private void OnConnectClick(object sender, RoutedEventArgs e)
         {
-            Connect();
+            Task.Factory.StartNew(async () => { await Connect(); });
+        }
+
+        private static async Task<SpotifyWebAPI> RunAuthentication()
+        {
+            WebAPIFactory webApiFactory = new WebAPIFactory(
+                "http://localhost",
+                8000,
+                "1bb1fc7f880443138e22068f49da7446",
+                Scope.UserReadPlaybackState | Scope.UserModifyPlaybackState);
+
+            try
+            {
+                return await webApiFactory.GetWebApi();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
+            }
         }
     }
 }
