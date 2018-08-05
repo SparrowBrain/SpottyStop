@@ -28,33 +28,30 @@ namespace SpottyStop
         private AfterCurrent _afterCurrent;
         private bool _isConnected;
 
-        private CancellationTokenSource _nextActionCancellationSource;
+        private CancellationTokenSource _stopCancellationSource;
+        private CancellationTokenSource _shutDownCancellationSource;
         private CancellationTokenSource _retryConnectCancellationSource;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            _nextActionCancellationSource = new CancellationTokenSource();
+            _stopCancellationSource = new CancellationTokenSource();
+            _shutDownCancellationSource = new CancellationTokenSource();
             _retryConnectCancellationSource = new CancellationTokenSource();
         }
 
-        private void ExecuteAfterCurrentActions()
+        private void Stop()
         {
-            if (StopAfterCurrent)
-            {
-                _spotify.PausePlayback();
-            }
-
-            if (ShutDownAfterCurrent)
-            {
-                _spotify.PausePlayback();
-                Process.Start("shutdown", "/s /t 10");
-            }
-
+            _spotify.PausePlayback();
             StopAfterCurrent = false;
+        }
+
+        private void ShutDown()
+        {
+            _spotify.PausePlayback();
+            Process.Start("shutdown", "/s /t 10");
             ShutDownAfterCurrent = false;
-            SetToolTipText();
         }
 
         public async Task Connect()
@@ -113,11 +110,11 @@ namespace SpottyStop
                 _stopAfterCurrent = value;
                 if (_stopAfterCurrent)
                 {
-                    QueueAction();
+                    QueueAction(Stop, ref _stopCancellationSource);
                 }
                 else
                 {
-                    _nextActionCancellationSource.Cancel();
+                    _stopCancellationSource.Cancel();
                 }
 
                 SetAfterCurrent();
@@ -135,11 +132,11 @@ namespace SpottyStop
                 _shutDownAfterCurrent = value;
                 if (_shutDownAfterCurrent)
                 {
-                    QueueAction();
+                    QueueAction(ShutDown, ref _shutDownCancellationSource);
                 }
                 else
                 {
-                    _nextActionCancellationSource.Cancel();
+                    _shutDownCancellationSource.Cancel();
                 }
 
                 SetAfterCurrent();
@@ -171,23 +168,24 @@ namespace SpottyStop
             AfterCurrent = AfterCurrent.Nothing;
         }
 
-        private void QueueAction()
+        private void QueueAction(Action action, ref CancellationTokenSource cancellationTokenSource)
         {
-            _nextActionCancellationSource = new CancellationTokenSource();
+            cancellationTokenSource = new CancellationTokenSource();
 
-            Task.Factory.StartNew(async () =>
+            Task.Factory.StartNew(async x =>
             {
+                var token = (CancellationToken)x;
                 var progressMs = _spotify.GetPlayback().ProgressMs;
                 var timeLeft = _spotify.GetPlayback().Item.DurationMs - progressMs;
 
-                await Task.Delay(timeLeft);
-                if (_nextActionCancellationSource.IsCancellationRequested)
+                await Task.Delay(timeLeft, token);
+                if (token.IsCancellationRequested)
                 {
                     return;
                 }
 
-                ExecuteAfterCurrentActions();
-            }, _nextActionCancellationSource.Token);
+                action.Invoke();
+            }, cancellationTokenSource.Token, cancellationTokenSource.Token);
         }
 
         public string ToolTipText
