@@ -175,8 +175,10 @@ namespace SpottyStop
             Task.Factory.StartNew(async x =>
             {
                 var token = (CancellationToken)x;
+
+                var songDuration = _spotify.GetPlayback().Item.DurationMs;
                 var progressMs = _spotify.GetPlayback().ProgressMs;
-                var timeLeft = _spotify.GetPlayback().Item.DurationMs - progressMs;
+                var timeLeft = songDuration - progressMs;
 
                 await Task.Delay(timeLeft, token);
                 if (token.IsCancellationRequested)
