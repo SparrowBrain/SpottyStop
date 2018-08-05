@@ -111,6 +111,15 @@ namespace SpottyStop
             {
                 if (value == _stopAfterCurrent) return;
                 _stopAfterCurrent = value;
+                if (_stopAfterCurrent)
+                {
+                    QueueAction();
+                }
+                else
+                {
+                    _nextActionCancellationSource.Cancel();
+                }
+
                 SetAfterCurrent();
                 SetToolTipText();
                 OnPropertyChanged();
@@ -124,6 +133,15 @@ namespace SpottyStop
             {
                 if (value == _shutDownAfterCurrent) return;
                 _shutDownAfterCurrent = value;
+                if (_shutDownAfterCurrent)
+                {
+                    QueueAction();
+                }
+                else
+                {
+                    _nextActionCancellationSource.Cancel();
+                }
+
                 SetAfterCurrent();
                 SetToolTipText();
                 OnPropertyChanged();
@@ -141,18 +159,15 @@ namespace SpottyStop
             if (ShutDownAfterCurrent)
             {
                 AfterCurrent = AfterCurrent.ShutDown;
-                QueueAction();
                 return;
             }
 
             if (StopAfterCurrent)
             {
                 AfterCurrent = AfterCurrent.Stop;
-                QueueAction();
                 return;
             }
 
-            _nextActionCancellationSource.Cancel();
             AfterCurrent = AfterCurrent.Nothing;
         }
 
