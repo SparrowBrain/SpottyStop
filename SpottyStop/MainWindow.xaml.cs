@@ -2,6 +2,7 @@
 using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
 using SpotifyAPI.Web.Enums;
+using SpotifyAPI.Web.Models;
 using SpottyStop.Annotations;
 using SpottyStop.Infrastructure;
 using System;
@@ -176,8 +177,19 @@ namespace SpottyStop
             {
                 var token = (CancellationToken)x;
 
-                var songDuration = _spotify.GetPlayback().Item.DurationMs;
-                var progressMs = _spotify.GetPlayback().ProgressMs;
+                PlaybackContext playbackContext;
+                try
+                {
+                    playbackContext = _spotify.GetPlayback();
+                }
+                catch
+                {
+                    await Connect();
+                    playbackContext = _spotify.GetPlayback();
+                }
+
+                var songDuration = playbackContext.Item.DurationMs;
+                var progressMs = playbackContext.ProgressMs;
                 var timeLeft = songDuration - progressMs;
 
                 await Task.Delay(timeLeft, token);
