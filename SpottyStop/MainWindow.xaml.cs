@@ -1,8 +1,6 @@
-﻿using SpotifyAPI.Local;
-using SpotifyAPI.Web;
+﻿using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
 using SpotifyAPI.Web.Enums;
-using SpotifyAPI.Web.Models;
 using SpottyStop.Annotations;
 using SpottyStop.Infrastructure;
 using System;
@@ -27,11 +25,9 @@ namespace SpottyStop
         private string _toolTip;
         private bool _extendedMenu;
         private AfterCurrent _afterCurrent;
-        private bool _isConnected;
 
         private CancellationTokenSource _stopCancellationSource;
         private CancellationTokenSource _shutDownCancellationSource;
-        private CancellationTokenSource _retryConnectCancellationSource;
 
         public MainWindow()
         {
@@ -39,67 +35,24 @@ namespace SpottyStop
 
             _stopCancellationSource = new CancellationTokenSource();
             _shutDownCancellationSource = new CancellationTokenSource();
-            _retryConnectCancellationSource = new CancellationTokenSource();
         }
 
-        private void Stop()
+        private async Task Stop()
         {
-            _spotify.PausePlayback();
+            await TrySpotify(() => _spotify.PausePlayback());
             StopAfterCurrent = false;
         }
 
-        private void ShutDown()
+        private async Task ShutDown()
         {
-            _spotify.PausePlayback();
+            await TrySpotify(() => _spotify.PausePlayback());
             Process.Start("shutdown", "/s /t 10");
             ShutDownAfterCurrent = false;
         }
 
         public async Task Connect()
         {
-            _retryConnectCancellationSource.Cancel();
-            _retryConnectCancellationSource = new CancellationTokenSource();
-
-            if (!SpotifyLocalAPI.IsSpotifyRunning())
-            {
-                IsConnected = false;
-                await RetryConnect();
-                return;
-            }
-
-            bool successful;
-            try
-            {
-                _spotify = await RunAuthentication();
-                successful = true;
-            }
-            catch
-            {
-                successful = false;
-            }
-
-            if (successful)
-            {
-                IsConnected = true;
-                SetToolTipText();
-            }
-            else
-            {
-                IsConnected = false;
-                await RetryConnect();
-            }
-        }
-
-        private async Task RetryConnect()
-        {
-            var cancellationToken = _retryConnectCancellationSource.Token;
-            await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            await Connect();
+            _spotify = await RunAuthentication();
         }
 
         public bool StopAfterCurrent
@@ -119,7 +72,7 @@ namespace SpottyStop
                 }
 
                 SetAfterCurrent();
-                SetToolTipText();
+                SetToolTipText().Wait();
                 OnPropertyChanged();
             }
         }
@@ -141,19 +94,13 @@ namespace SpottyStop
                 }
 
                 SetAfterCurrent();
-                SetToolTipText();
+                SetToolTipText().Wait();
                 OnPropertyChanged();
             }
         }
 
         private void SetAfterCurrent()
         {
-            if (!IsConnected)
-            {
-                AfterCurrent = AfterCurrent.NotConnected;
-                return;
-            }
-
             if (ShutDownAfterCurrent)
             {
                 AfterCurrent = AfterCurrent.ShutDown;
@@ -169,24 +116,15 @@ namespace SpottyStop
             AfterCurrent = AfterCurrent.Nothing;
         }
 
-        private void QueueAction(Action action, ref CancellationTokenSource cancellationTokenSource)
+        private void QueueAction(Func<Task> action, ref CancellationTokenSource cancellationTokenSource)
         {
             cancellationTokenSource = new CancellationTokenSource();
+
+            var playbackContext = TrySpotify(() => _spotify.GetPlayback()).Result;
 
             Task.Factory.StartNew(async x =>
             {
                 var token = (CancellationToken)x;
-
-                PlaybackContext playbackContext;
-                try
-                {
-                    playbackContext = _spotify.GetPlayback();
-                }
-                catch
-                {
-                    await Connect();
-                    playbackContext = _spotify.GetPlayback();
-                }
 
                 var songDuration = playbackContext.Item.DurationMs;
                 var progressMs = playbackContext.ProgressMs;
@@ -198,7 +136,7 @@ namespace SpottyStop
                     return;
                 }
 
-                action.Invoke();
+                await action.Invoke();
             }, cancellationTokenSource.Token, cancellationTokenSource.Token);
         }
 
@@ -221,13 +159,7 @@ namespace SpottyStop
                 if (value == _extendedMenu) return;
                 _extendedMenu = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(AllowManualConnect));
             }
-        }
-
-        public bool AllowManualConnect
-        {
-            get { return ExtendedMenu && !IsConnected; }
         }
 
         public ICommand LeftClick
@@ -246,49 +178,51 @@ namespace SpottyStop
             }
         }
 
-        public bool IsConnected
-        {
-            get { return _isConnected; }
-            set
-            {
-                if (value == _isConnected) return;
-                _isConnected = value;
-                SetAfterCurrent();
-                SetToolTipText();
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(AllowManualConnect));
-            }
-        }
-
         private void OnClearSelectionClick(object sender, RoutedEventArgs e)
         {
             StopAfterCurrent = false;
             ShutDownAfterCurrent = false;
         }
 
-        private void SetToolTipText()
+        private async Task SetToolTipText()
         {
-            if (!IsConnected)
-            {
-                ToolTipText = "Not connected";
-                return;
-            }
-
             if (ShutDownAfterCurrent)
             {
-                var track = _spotify.GetPlayingTrack().Item;
+                var track = await TrySpotify(() => _spotify.GetPlayingTrack().Item);
                 ToolTipText = $"Shutting down after: {track.Artists[0].Name} - {track.Name}";
                 return;
             }
 
             if (StopAfterCurrent)
             {
-                var track = _spotify.GetPlayingTrack().Item;
+                var track = await TrySpotify(() => _spotify.GetPlayingTrack().Item);
                 ToolTipText = $"Stopping after: {track.Artists[0].Name} - {track.Name}";
                 return;
             }
 
             ToolTipText = "All is good";
+        }
+
+        private async Task<T> TrySpotify<T>(Func<T> spotifyAction)
+        {
+            try
+            {
+                return spotifyAction.Invoke();
+            }
+            catch
+            {
+                try
+                {
+                    await Connect();
+                    return spotifyAction.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    ToolTipText = ex.Message;
+                    AfterCurrent = AfterCurrent.NotConnected;
+                    throw;
+                }
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -301,7 +235,7 @@ namespace SpottyStop
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            Task.Factory.StartNew(async () => { await Connect(); });
+            AfterCurrent = AfterCurrent.Nothing;
         }
 
         private void OnExitClick(object sender, RoutedEventArgs e)
@@ -312,11 +246,6 @@ namespace SpottyStop
         private void TaskbarIcon_TrayRightMouseDown(object sender, RoutedEventArgs e)
         {
             ExtendedMenu = true;
-        }
-
-        private void OnConnectClick(object sender, RoutedEventArgs e)
-        {
-            Task.Factory.StartNew(async () => { await Connect(); });
         }
 
         private static async Task<SpotifyWebAPI> RunAuthentication()

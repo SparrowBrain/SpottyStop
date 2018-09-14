@@ -22,12 +22,11 @@
 
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Stop after current"  IsCheckable="True" IsChecked="{Binding Path=StopAfterCurrent, Mode=TwoWay}" IsEnabled="{Binding Path=IsConnected}"/>
-                    <MenuItem Header="Shut down after current" IsCheckable="True" IsChecked="{Binding Path=ShutDownAfterCurrent, Mode=TwoWay}" IsEnabled="{Binding Path=IsConnected}"/>
+                    <MenuItem Header="Stop after current"  IsCheckable="True" IsChecked="{Binding Path=StopAfterCurrent, Mode=TwoWay}"/>
+                    <MenuItem Header="Shut down after current" IsCheckable="True" IsChecked="{Binding Path=ShutDownAfterCurrent, Mode=TwoWay}"/>
                     <Separator />
                     <MenuItem Header="Clear selection" Click="OnClearSelectionClick" />
                     <Separator Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
-                    <MenuItem Header="Connect" Click="OnConnectClick" Visibility="{Binding Path=AllowManualConnect, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
                     <MenuItem Header="Exit" Click="OnExitClick" Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>
