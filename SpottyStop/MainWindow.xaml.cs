@@ -1,6 +1,7 @@
 ﻿using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
 using SpotifyAPI.Web.Enums;
+using SpotifyAPI.Web.Models;
 using SpottyStop.Annotations;
 using SpottyStop.Infrastructure;
 using System;
@@ -50,7 +51,7 @@ namespace SpottyStop
             ShutDownAfterCurrent = false;
         }
 
-        public async Task Connect()
+        public async Task Authenticate()
         {
             _spotify = await RunAuthentication();
         }
@@ -203,25 +204,29 @@ namespace SpottyStop
             ToolTipText = "All is good";
         }
 
-        private async Task<T> TrySpotify<T>(Func<T> spotifyAction)
+        private async Task<T> TrySpotify<T>(Func<T> spotifyAction) where T : BasicModel
         {
             try
             {
-                return spotifyAction.Invoke();
+                if (_spotify == null)
+                {
+                    await Authenticate();
+                }
+
+                var result = spotifyAction.Invoke();
+                if (result.HasError() && result.Error.Status == 401)
+                {
+                    await Authenticate();
+                    result = spotifyAction.Invoke();
+                }
+
+                return result;
             }
-            catch
+            catch (Exception ex)
             {
-                try
-                {
-                    await Connect();
-                    return spotifyAction.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    ToolTipText = ex.Message;
-                    AfterCurrent = AfterCurrent.NotConnected;
-                    throw;
-                }
+                ToolTipText = ex.Message;
+                AfterCurrent = AfterCurrent.NotConnected;
+                throw;
             }
         }
 
