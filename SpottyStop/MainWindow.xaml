@@ -9,6 +9,8 @@
         Height="0"
         ShowActivated="False"
         ShowInTaskbar="False"
+        Background = "Transparent"
+        AllowsTransparency = "True"
         DataContext="{Binding RelativeSource={RelativeSource Self}}">
     <Grid>
         <tb:TaskbarIcon
