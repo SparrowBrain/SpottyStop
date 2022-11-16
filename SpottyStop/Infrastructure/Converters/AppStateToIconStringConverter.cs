@@ -4,28 +4,28 @@ using System.Windows.Data;
 
 namespace SpottyStop.Infrastructure.Converters
 {
-    public class AfterCurrentToIconStringConverter : BaseConverter, IValueConverter
+    public class AppStateToIconStringConverter : BaseConverter, IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            AfterCurrent afterCurrent;
-            if (!Enum.TryParse(value?.ToString(), out afterCurrent))
+            AppState appState;
+            if (!Enum.TryParse(value?.ToString(), out appState))
             {
                 return "/Icons/7108.ico";
             }
 
             string icon;
-            switch (afterCurrent)
+            switch (appState)
             {
-                case AfterCurrent.NotConnected:
+                case AppState.NotConnected:
                     icon = "/Icons/7108_notconnected.ico";
                     break;
 
-                case AfterCurrent.Stop:
+                case AppState.StopAfterCurrent:
                     icon = "/Icons/7108_stop.ico";
                     break;
 
-                case AfterCurrent.ShutDown:
+                case AppState.ShutDownAfterCurrent:
                     icon = "/Icons/7108_shutdown.ico";
                     break;
 

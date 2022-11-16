@@ -16,7 +16,7 @@
     <Grid>
         <tb:TaskbarIcon
 
-            IconSource="{Binding Path=AfterCurrent, Converter={converters1:AfterCurrentToIconStringConverter}}"
+            IconSource="{Binding Path=AppState, Converter={converters1:AppStateToIconStringConverter}}"
             ToolTipText="{Binding Path=ToolTipText}"
             MenuActivation="LeftOrRightClick"
             NoLeftClickDelay="True"

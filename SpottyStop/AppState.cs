@@ -1,6 +1,6 @@
 ﻿namespace SpottyStop
 {
-    public enum AfterCurrent
+    public enum AppState
     {
         NotConnected,
         Nothing,

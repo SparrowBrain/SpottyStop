@@ -25,7 +25,7 @@ namespace SpottyStop
         private bool _shutDownAfterCurrent;
         private string _toolTip;
         private bool _extendedMenu;
-        private AfterCurrent _afterCurrent;
+        private AppState _appState;
 
         private CancellationTokenSource _stopCancellationSource;
         private CancellationTokenSource _shutDownCancellationSource;
@@ -104,17 +104,17 @@ namespace SpottyStop
         {
             if (ShutDownAfterCurrent)
             {
-                AfterCurrent = AfterCurrent.ShutDown;
+                AppState = AppState.ShutDown;
                 return;
             }
 
             if (StopAfterCurrent)
             {
-                AfterCurrent = AfterCurrent.Stop;
+                AppState = AppState.Stop;
                 return;
             }
 
-            AfterCurrent = AfterCurrent.Nothing;
+            AppState = AppState.Nothing;
         }
 
         private void QueueAction(Func<Task> action, ref CancellationTokenSource cancellationTokenSource)
@@ -168,13 +168,13 @@ namespace SpottyStop
             get { return new RelayCommand(() => { ExtendedMenu = false; }); }
         }
 
-        public AfterCurrent AfterCurrent
+        public AppState AppState
         {
-            get { return _afterCurrent; }
+            get { return _appState; }
             set
             {
-                if (value == _afterCurrent) return;
-                _afterCurrent = value;
+                if (value == _appState) return;
+                _appState = value;
                 OnPropertyChanged();
             }
         }
@@ -225,7 +225,7 @@ namespace SpottyStop
             catch (Exception ex)
             {
                 ToolTipText = ex.Message;
-                AfterCurrent = AfterCurrent.NotConnected;
+                AppState = AppState.NotConnected;
                 throw;
             }
         }
@@ -240,7 +240,7 @@ namespace SpottyStop
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            AfterCurrent = AfterCurrent.Nothing;
+            AppState = AppState.Nothing;
         }
 
         private void OnExitClick(object sender, RoutedEventArgs e)
