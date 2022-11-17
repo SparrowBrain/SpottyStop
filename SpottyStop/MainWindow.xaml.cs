@@ -72,7 +72,7 @@ namespace SpottyStop
                     _stopCancellationSource.Cancel();
                 }
 
-                SetAfterCurrent();
+                SetAppState();
                 SetToolTipText().Wait();
                 OnPropertyChanged();
             }
@@ -94,23 +94,23 @@ namespace SpottyStop
                     _shutDownCancellationSource.Cancel();
                 }
 
-                SetAfterCurrent();
+                SetAppState();
                 SetToolTipText().Wait();
                 OnPropertyChanged();
             }
         }
 
-        private void SetAfterCurrent()
+        private void SetAppState()
         {
             if (ShutDownAfterCurrent)
             {
-                AppState = AppState.ShutDown;
+                AppState = AppState.ShutDownAfterCurrent;
                 return;
             }
 
             if (StopAfterCurrent)
             {
-                AppState = AppState.Stop;
+                AppState = AppState.StopAfterCurrent;
                 return;
             }
 

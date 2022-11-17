@@ -4,7 +4,7 @@
     {
         NotConnected,
         Nothing,
-        Stop,
-        ShutDown
+        StopAfterCurrent,
+        ShutDownAfterCurrent
     }
 }
