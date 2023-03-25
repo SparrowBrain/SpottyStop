@@ -69,6 +69,8 @@
     </ApplicationDefinition>
     <Compile Include="AppState.cs" />
     <Compile Include="Bootstrapper.cs" />
+    <Compile Include="Infrastructure\Events\ErrorHappened.cs" />
+    <Compile Include="Infrastructure\Events\StateChanged.cs" />
     <Compile Include="Infrastructure\RelayCommand.cs" />
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
@@ -78,6 +80,8 @@
     <Compile Include="Infrastructure\Converters\BaseConverter.cs" />
     <Compile Include="Infrastructure\Converters\BoolToCollapsedVisibilityConverter.cs" />
     <Compile Include="Infrastructure\Helpers\EnumerationExtension.cs" />
+    <Compile Include="Services\ISpotify.cs" />
+    <Compile Include="Services\Spotify.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Pages\ShellView.xaml.cs">
@@ -131,5 +135,6 @@
       <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

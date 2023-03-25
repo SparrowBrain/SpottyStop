@@ -2,6 +2,8 @@
 using Stylet;
 using StyletIoC;
 using SpottyStop.Pages;
+using SpottyStop.Services;
+using SpotifyAPI.Web;
 
 namespace SpottyStop
 {
@@ -9,7 +11,7 @@ namespace SpottyStop
     {
         protected override void ConfigureIoC(IStyletIoCBuilder builder)
         {
-            // Configure the IoC container in here
+            builder.Bind<ISpotify>().To<Spotify>().InSingletonScope();
         }
 
         protected override void Configure()

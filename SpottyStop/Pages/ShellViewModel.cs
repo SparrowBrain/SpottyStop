@@ -2,20 +2,17 @@
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
-using SpotifyAPI.Web;
-using SpotifyAPI.Web.Auth;
-using SpotifyAPI.Web.Enums;
-using SpotifyAPI.Web.Models;
 using SpottyStop.Infrastructure;
+using SpottyStop.Infrastructure.Events;
+using SpottyStop.Services;
 using Stylet;
 
 namespace SpottyStop.Pages
 {
-    public class ShellViewModel : Screen
+    public class ShellViewModel : Screen, IHandle<ErrorHappened>
     {
-        private SpotifyWebAPI _spotify;
+        private readonly ISpotify _spotify;
         private bool _stopAfterCurrent;
         private bool _shutDownAfterCurrent;
         private string _toolTip;
@@ -25,8 +22,11 @@ namespace SpottyStop.Pages
         private CancellationTokenSource _stopCancellationSource;
         private CancellationTokenSource _shutDownCancellationSource;
 
-        public ShellViewModel()
+        public ShellViewModel(ISpotify spotify, IEventAggregator eventAggregator)
         {
+            _spotify = spotify;
+            eventAggregator.Subscribe(this);
+
             _stopCancellationSource = new CancellationTokenSource();
             _shutDownCancellationSource = new CancellationTokenSource();
         }
@@ -36,24 +36,6 @@ namespace SpottyStop.Pages
             base.OnViewLoaded();
 
             AppState = AppState.Nothing;
-        }
-
-        private async Task Stop()
-        {
-            await TrySpotify(() => _spotify.PausePlayback());
-            StopAfterCurrent = false;
-        }
-
-        private async Task ShutDown()
-        {
-            await TrySpotify(() => _spotify.PausePlayback());
-            Process.Start("shutdown", "/s /t 10");
-            ShutDownAfterCurrent = false;
-        }
-
-        public async Task Authenticate()
-        {
-            _spotify = await RunAuthentication();
         }
 
         public bool StopAfterCurrent
@@ -100,47 +82,6 @@ namespace SpottyStop.Pages
             }
         }
 
-        private void SetAppState()
-        {
-            if (ShutDownAfterCurrent)
-            {
-                AppState = AppState.ShutDownAfterCurrent;
-                return;
-            }
-
-            if (StopAfterCurrent)
-            {
-                AppState = AppState.StopAfterCurrent;
-                return;
-            }
-
-            AppState = AppState.Nothing;
-        }
-
-        private void QueueAction(Func<Task> action, ref CancellationTokenSource cancellationTokenSource)
-        {
-            cancellationTokenSource = new CancellationTokenSource();
-
-            var playbackContext = TrySpotify(() => _spotify.GetPlayback()).Result;
-
-            Task.Factory.StartNew(async x =>
-            {
-                var token = (CancellationToken)x;
-
-                var songDuration = playbackContext.Item.DurationMs;
-                var progressMs = playbackContext.ProgressMs;
-                var timeLeft = songDuration - progressMs;
-
-                await Task.Delay(timeLeft, token);
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                await action.Invoke();
-            }, cancellationTokenSource.Token, cancellationTokenSource.Token);
-        }
-
         public string ToolTipText
         {
             get => _toolTip;
@@ -170,18 +111,42 @@ namespace SpottyStop.Pages
             ShutDownAfterCurrent = false;
         }
 
+        public void ShowExtendedMenu()
+        {
+            ExtendedMenu = true;
+        }
+
+        public void Handle(ErrorHappened message)
+        {
+            ToolTipText = message.Text;
+            AppState = AppState.NotConnected;
+        }
+
+        private async Task Stop()
+        {
+            await _spotify.PausePlayback();
+            StopAfterCurrent = false;
+        }
+
+        private async Task ShutDown()
+        {
+            await _spotify.PausePlayback();
+            Process.Start("shutdown", "/s /t 10");
+            ShutDownAfterCurrent = false;
+        }
+
         private async Task SetToolTipText()
         {
             if (ShutDownAfterCurrent)
             {
-                var track = await TrySpotify(() => _spotify.GetPlayingTrack().Item);
+                var track = await _spotify.GetPlayingTrack();
                 ToolTipText = $"Shutting down after: {track.Artists[0].Name} - {track.Name}";
                 return;
             }
 
             if (StopAfterCurrent)
             {
-                var track = await TrySpotify(() => _spotify.GetPlayingTrack().Item);
+                var track = await _spotify.GetPlayingTrack();
                 ToolTipText = $"Stopping after: {track.Artists[0].Name} - {track.Name}";
                 return;
             }
@@ -189,59 +154,45 @@ namespace SpottyStop.Pages
             ToolTipText = "All is good";
         }
 
-        private async Task<T> TrySpotify<T>(Func<T> spotifyAction) where T : BasicModel
+        private void SetAppState()
         {
-            try
+            if (ShutDownAfterCurrent)
             {
-                if (_spotify == null)
+                AppState = AppState.ShutDownAfterCurrent;
+                return;
+            }
+
+            if (StopAfterCurrent)
+            {
+                AppState = AppState.StopAfterCurrent;
+                return;
+            }
+
+            AppState = AppState.Nothing;
+        }
+
+        private void QueueAction(Func<Task> action, ref CancellationTokenSource cancellationTokenSource)
+        {
+            cancellationTokenSource = new CancellationTokenSource();
+
+            var playbackContext = _spotify.GetPlayback().Result;
+
+            Task.Factory.StartNew(async x =>
+            {
+                var token = (CancellationToken)x;
+
+                var songDuration = playbackContext.Item.DurationMs;
+                var progressMs = playbackContext.ProgressMs;
+                var timeLeft = songDuration - progressMs;
+
+                await Task.Delay(timeLeft, token);
+                if (token.IsCancellationRequested)
                 {
-                    await Authenticate();
+                    return;
                 }
 
-                var result = spotifyAction.Invoke();
-                if (result.HasError() && result.Error.Status == 401)
-                {
-                    await Authenticate();
-                    result = spotifyAction.Invoke();
-                }
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                ToolTipText = ex.Message;
-                AppState = AppState.NotConnected;
-                throw;
-            }
-        }
-
-        public void ShowExtendedMenu()
-        {
-            ExtendedMenu = true;
-        }
-
-        private void TaskbarIcon_TrayRightMouseDown(object sender, RoutedEventArgs e)
-        {
-            
-        }
-
-        private static async Task<SpotifyWebAPI> RunAuthentication()
-        {
-            WebAPIFactory webApiFactory = new WebAPIFactory(
-                "http://localhost",
-                8000,
-                "1bb1fc7f880443138e22068f49da7446",
-                Scope.UserReadPlaybackState | Scope.UserModifyPlaybackState);
-
-            try
-            {
-                return await webApiFactory.GetWebApi();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                throw;
-            }
+                await action.Invoke();
+            }, cancellationTokenSource.Token, cancellationTokenSource.Token);
         }
     }
 }
