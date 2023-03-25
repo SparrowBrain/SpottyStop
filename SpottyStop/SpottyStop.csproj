@@ -70,7 +70,7 @@
     <Compile Include="AppState.cs" />
     <Compile Include="Bootstrapper.cs" />
     <Compile Include="Infrastructure\Events\ErrorHappened.cs" />
-    <Compile Include="Infrastructure\Events\StateChanged.cs" />
+    <Compile Include="Infrastructure\Events\StopAfterSongHappened.cs" />
     <Compile Include="Infrastructure\RelayCommand.cs" />
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
@@ -80,7 +80,18 @@
     <Compile Include="Infrastructure\Converters\BaseConverter.cs" />
     <Compile Include="Infrastructure\Converters\BoolToCollapsedVisibilityConverter.cs" />
     <Compile Include="Infrastructure\Helpers\EnumerationExtension.cs" />
+    <Compile Include="Services\ActionDelayRetriever.cs" />
+    <Compile Include="Services\Computer.cs" />
+    <Compile Include="Services\DelayedActionFactory.cs" />
+    <Compile Include="Services\GenericDelayedActionRunner.cs" />
+    <Compile Include="Services\IActionDelayRetriever.cs" />
+    <Compile Include="Services\IComputer.cs" />
+    <Compile Include="Services\IDelayedActionFactory.cs" />
+    <Compile Include="Services\IGenericDelayedActionRunner.cs" />
+    <Compile Include="Services\IMainAppService.cs" />
     <Compile Include="Services\ISpotify.cs" />
+    <Compile Include="Services\MainAppService.cs" />
+    <Compile Include="Infrastructure\Events\ShutDownAfterSongHappened.cs" />
     <Compile Include="Services\Spotify.cs" />
   </ItemGroup>
   <ItemGroup>

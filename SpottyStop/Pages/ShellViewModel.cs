@@ -1,6 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using SpottyStop.Infrastructure;
@@ -10,9 +8,13 @@ using Stylet;
 
 namespace SpottyStop.Pages
 {
-    public class ShellViewModel : Screen, IHandle<ErrorHappened>
+    public class ShellViewModel : Screen,
+        IHandle<ErrorHappened>,
+        IHandle<ShutDownAfterSongHappened>,
+        IHandle<StopAfterSongHappened>
     {
         private readonly ISpotify _spotify;
+        private readonly IMainAppService _mainAppService;
         private bool _stopAfterCurrent;
         private bool _shutDownAfterCurrent;
         private string _toolTip;
@@ -22,9 +24,10 @@ namespace SpottyStop.Pages
         private CancellationTokenSource _stopCancellationSource;
         private CancellationTokenSource _shutDownCancellationSource;
 
-        public ShellViewModel(ISpotify spotify, IEventAggregator eventAggregator)
+        public ShellViewModel(ISpotify spotify, IEventAggregator eventAggregator, IMainAppService mainAppService)
         {
             _spotify = spotify;
+            _mainAppService = mainAppService;
             eventAggregator.Subscribe(this);
 
             _stopCancellationSource = new CancellationTokenSource();
@@ -47,7 +50,8 @@ namespace SpottyStop.Pages
                 _stopAfterCurrent = value;
                 if (_stopAfterCurrent)
                 {
-                    QueueAction(Stop, ref _stopCancellationSource);
+                    _stopCancellationSource = new CancellationTokenSource();
+                    _mainAppService.QueueStop(_stopCancellationSource.Token);
                 }
                 else
                 {
@@ -65,11 +69,16 @@ namespace SpottyStop.Pages
             get { return _shutDownAfterCurrent; }
             set
             {
-                if (value == _shutDownAfterCurrent) return;
+                if (value == _shutDownAfterCurrent)
+                {
+                    return;
+                }
+
                 _shutDownAfterCurrent = value;
                 if (_shutDownAfterCurrent)
                 {
-                    QueueAction(ShutDown, ref _shutDownCancellationSource);
+                    _shutDownCancellationSource = new CancellationTokenSource();
+                    _mainAppService.QueueShutDown(_shutDownCancellationSource.Token);
                 }
                 else
                 {
@@ -122,17 +131,14 @@ namespace SpottyStop.Pages
             AppState = AppState.NotConnected;
         }
 
-        private async Task Stop()
+        public void Handle(ShutDownAfterSongHappened message)
         {
-            await _spotify.PausePlayback();
-            StopAfterCurrent = false;
+            ShutDownAfterCurrent = false;
         }
 
-        private async Task ShutDown()
+        public void Handle(StopAfterSongHappened message)
         {
-            await _spotify.PausePlayback();
-            Process.Start("shutdown", "/s /t 10");
-            ShutDownAfterCurrent = false;
+            StopAfterCurrent = false;
         }
 
         private async Task SetToolTipText()
@@ -169,30 +175,6 @@ namespace SpottyStop.Pages
             }
 
             AppState = AppState.Nothing;
-        }
-
-        private void QueueAction(Func<Task> action, ref CancellationTokenSource cancellationTokenSource)
-        {
-            cancellationTokenSource = new CancellationTokenSource();
-
-            var playbackContext = _spotify.GetPlayback().Result;
-
-            Task.Factory.StartNew(async x =>
-            {
-                var token = (CancellationToken)x;
-
-                var songDuration = playbackContext.Item.DurationMs;
-                var progressMs = playbackContext.ProgressMs;
-                var timeLeft = songDuration - progressMs;
-
-                await Task.Delay(timeLeft, token);
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                await action.Invoke();
-            }, cancellationTokenSource.Token, cancellationTokenSource.Token);
         }
     }
 }
