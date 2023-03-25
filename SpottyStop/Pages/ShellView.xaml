@@ -1,9 +1,8 @@
-﻿<Window x:Class="SpottyStop.MainWindow"
+﻿<Window x:Class="SpottyStop.Pages.ShellView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         xmlns:converters1="clr-namespace:SpottyStop.Infrastructure.Converters"
-        Loaded="Window_Loaded"
         WindowStyle="None"
         Width="0"
         Height="0"
@@ -12,7 +11,7 @@
         Visibility="Hidden"
         Background = "Transparent"
         AllowsTransparency = "True"
-        DataContext="{Binding RelativeSource={RelativeSource Self}}">
+        xmlns:s="https://github.com/canton7/Stylet">
     <Grid>
         <tb:TaskbarIcon
 
@@ -21,14 +20,14 @@
             MenuActivation="LeftOrRightClick"
             NoLeftClickDelay="True"
             LeftClickCommand="{Binding Path=LeftClick}"
-            TrayRightMouseDown="TaskbarIcon_TrayRightMouseDown">
+            TrayRightMouseDown="{s:Action ShowExtendedMenu}">
 
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="Stop after current"  IsCheckable="True" IsChecked="{Binding Path=StopAfterCurrent, Mode=TwoWay}" />
                     <MenuItem Header="Shut down after current" IsCheckable="True" IsChecked="{Binding Path=ShutDownAfterCurrent, Mode=TwoWay}" />
                     <Separator />
-                    <MenuItem Header="Clear selection" Click="OnClearSelectionClick" />
+                    <MenuItem Header="Clear selection" Click="{s:Action ClearSelectionClick}" />
                     <Separator Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
                     <MenuItem Header="Exit" Click="OnExitClick" Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
                 </ContextMenu>

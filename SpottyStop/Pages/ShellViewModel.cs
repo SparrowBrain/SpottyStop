@@ -1,24 +1,19 @@
-﻿using SpotifyAPI.Web;
-using SpotifyAPI.Web.Auth;
-using SpotifyAPI.Web.Enums;
-using SpotifyAPI.Web.Models;
-using SpottyStop.Annotations;
-using SpottyStop.Infrastructure;
-using System;
-using System.ComponentModel;
+﻿using System;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using SpotifyAPI.Web;
+using SpotifyAPI.Web.Auth;
+using SpotifyAPI.Web.Enums;
+using SpotifyAPI.Web.Models;
+using SpottyStop.Infrastructure;
+using Stylet;
 
-namespace SpottyStop
+namespace SpottyStop.Pages
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window, INotifyPropertyChanged
+    public class ShellViewModel : Screen
     {
         private SpotifyWebAPI _spotify;
         private bool _stopAfterCurrent;
@@ -30,12 +25,17 @@ namespace SpottyStop
         private CancellationTokenSource _stopCancellationSource;
         private CancellationTokenSource _shutDownCancellationSource;
 
-        public MainWindow()
+        public ShellViewModel()
         {
-            InitializeComponent();
-
             _stopCancellationSource = new CancellationTokenSource();
             _shutDownCancellationSource = new CancellationTokenSource();
+        }
+
+        protected override void OnViewLoaded()
+        {
+            base.OnViewLoaded();
+
+            AppState = AppState.Nothing;
         }
 
         private async Task Stop()
@@ -74,7 +74,7 @@ namespace SpottyStop
 
                 SetAppState();
                 SetToolTipText().Wait();
-                OnPropertyChanged();
+                NotifyOfPropertyChange();
             }
         }
 
@@ -96,7 +96,7 @@ namespace SpottyStop
 
                 SetAppState();
                 SetToolTipText().Wait();
-                OnPropertyChanged();
+                NotifyOfPropertyChange();
             }
         }
 
@@ -143,24 +143,14 @@ namespace SpottyStop
 
         public string ToolTipText
         {
-            get { return _toolTip; }
-            set
-            {
-                if (value == _toolTip) return;
-                _toolTip = value;
-                OnPropertyChanged();
-            }
+            get => _toolTip;
+            set => SetAndNotify(ref _toolTip, value);
         }
 
         public bool ExtendedMenu
         {
-            get { return _extendedMenu; }
-            set
-            {
-                if (value == _extendedMenu) return;
-                _extendedMenu = value;
-                OnPropertyChanged();
-            }
+            get => _extendedMenu;
+            set => SetAndNotify(ref _extendedMenu, value);
         }
 
         public ICommand LeftClick
@@ -170,16 +160,11 @@ namespace SpottyStop
 
         public AppState AppState
         {
-            get { return _appState; }
-            set
-            {
-                if (value == _appState) return;
-                _appState = value;
-                OnPropertyChanged();
-            }
+            get => _appState;
+            set => SetAndNotify(ref _appState, value);
         }
 
-        private void OnClearSelectionClick(object sender, RoutedEventArgs e)
+        public void ClearSelectionClick()
         {
             StopAfterCurrent = false;
             ShutDownAfterCurrent = false;
@@ -230,27 +215,14 @@ namespace SpottyStop
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        [NotifyPropertyChangedInvocator]
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public void ShowExtendedMenu()
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            AppState = AppState.Nothing;
-        }
-
-        private void OnExitClick(object sender, RoutedEventArgs e)
-        {
-            Application.Current.Shutdown();
+            ExtendedMenu = true;
         }
 
         private void TaskbarIcon_TrayRightMouseDown(object sender, RoutedEventArgs e)
         {
-            ExtendedMenu = true;
+            
         }
 
         private static async Task<SpotifyWebAPI> RunAuthentication()
