@@ -147,11 +147,10 @@ namespace SpottyStop.Services
             await writer.FlushAsync();
         }
 
-        public async Task GetCallback(string code)
+        private async Task GetCallback(string code)
         {
             try
             {
-                // Note that we use the verifier calculated above!
                 var initialResponse =
                     await new OAuthClient().RequestToken(new PKCETokenRequest(ClientId, code,
                         new Uri("http://localhost:8000/"), _verifier));
