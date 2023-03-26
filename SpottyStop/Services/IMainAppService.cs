@@ -5,7 +5,9 @@ namespace SpottyStop.Services
 {
     public interface IMainAppService
     {
-        Task QueueShutDown(CancellationToken token);
-        Task QueueStop(CancellationToken token);
+        Task ScheduleShutdownAfterCurrent(CancellationToken token);
+        Task ScheduleStopAfterCurrent(CancellationToken token); 
+        Task ScheduleShutdownAfterQueue(CancellationToken token);
+        Task ScheduleStopAfterQueue(CancellationToken token);
     }
 }

@@ -11,18 +11,24 @@ namespace SpottyStop.Pages
     public class ShellViewModel : Screen,
         IHandle<ErrorHappened>,
         IHandle<ShutDownAfterSongHappened>,
-        IHandle<StopAfterSongHappened>
+        IHandle<StopAfterSongHappened>,
+        IHandle<ShutDownAfterQueueHappened>,
+        IHandle<StopAfterQueueHappened>
     {
         private readonly ISpotify _spotify;
         private readonly IMainAppService _mainAppService;
         private bool _stopAfterCurrent;
         private bool _shutDownAfterCurrent;
+        private bool _stopAfterQueue;
+        private bool _shutDownAfterQueue;
         private string _toolTip;
         private bool _extendedMenu;
         private AppState _appState;
 
-        private CancellationTokenSource _stopCancellationSource;
-        private CancellationTokenSource _shutDownCancellationSource;
+        private CancellationTokenSource _stopAfterCurrentCancellationSource;
+        private CancellationTokenSource _shutDownAfterCurrentCancellationSource;
+        private CancellationTokenSource _stopAfterQueueCancellationSource;
+        private CancellationTokenSource _shutDownAfterQueueCancellationSource;
 
         public ShellViewModel(ISpotify spotify, IEventAggregator eventAggregator, IMainAppService mainAppService)
         {
@@ -30,8 +36,8 @@ namespace SpottyStop.Pages
             _mainAppService = mainAppService;
             eventAggregator.Subscribe(this);
 
-            _stopCancellationSource = new CancellationTokenSource();
-            _shutDownCancellationSource = new CancellationTokenSource();
+            _stopAfterCurrentCancellationSource = new CancellationTokenSource();
+            _shutDownAfterCurrentCancellationSource = new CancellationTokenSource();
         }
 
         protected override void OnViewLoaded()
@@ -50,12 +56,12 @@ namespace SpottyStop.Pages
                 _stopAfterCurrent = value;
                 if (_stopAfterCurrent)
                 {
-                    _stopCancellationSource = new CancellationTokenSource();
-                    _mainAppService.QueueStop(_stopCancellationSource.Token);
+                    _stopAfterCurrentCancellationSource = new CancellationTokenSource();
+                    _mainAppService.ScheduleStopAfterCurrent(_stopAfterCurrentCancellationSource.Token);
                 }
                 else
                 {
-                    _stopCancellationSource.Cancel();
+                    _stopAfterCurrentCancellationSource.Cancel();
                 }
 
                 SetAppState();
@@ -77,12 +83,62 @@ namespace SpottyStop.Pages
                 _shutDownAfterCurrent = value;
                 if (_shutDownAfterCurrent)
                 {
-                    _shutDownCancellationSource = new CancellationTokenSource();
-                    _mainAppService.QueueShutDown(_shutDownCancellationSource.Token);
+                    _shutDownAfterCurrentCancellationSource = new CancellationTokenSource();
+                    _mainAppService.ScheduleShutdownAfterCurrent(_shutDownAfterCurrentCancellationSource.Token);
                 }
                 else
                 {
-                    _shutDownCancellationSource.Cancel();
+                    _shutDownAfterCurrentCancellationSource.Cancel();
+                }
+
+                SetAppState();
+                Task.Run(SetToolTipText);
+                NotifyOfPropertyChange();
+            }
+        }
+
+        public bool StopAfterQueue
+        {
+            get { return _stopAfterQueue; }
+            set
+            {
+                if (value == _stopAfterQueue) return;
+                _stopAfterQueue = value;
+                if (_stopAfterQueue)
+                {
+                    _stopAfterQueueCancellationSource = new CancellationTokenSource();
+                    _mainAppService.ScheduleStopAfterQueue(_stopAfterQueueCancellationSource.Token);
+                }
+                else
+                {
+                    _stopAfterQueueCancellationSource.Cancel();
+                }
+
+                SetAppState();
+                Task.Run(SetToolTipText);
+                NotifyOfPropertyChange();
+            }
+        }
+
+        public bool ShutDownAfterQueue
+        {
+            get { return _shutDownAfterQueue; }
+            set
+            {
+                if (value == _shutDownAfterQueue)
+                {
+                    return;
+                }
+
+                _shutDownAfterQueue = value;
+                if (_shutDownAfterQueue)
+                {
+                    _shutDownAfterQueueCancellationSource = new CancellationTokenSource();
+                    _mainAppService.ScheduleShutdownAfterQueue(_shutDownAfterQueueCancellationSource.Token);
+                }
+                else
+                {
+                    _shutDownAfterQueueCancellationSource.Cancel();
                 }
 
                 SetAppState();
@@ -118,6 +174,8 @@ namespace SpottyStop.Pages
         {
             StopAfterCurrent = false;
             ShutDownAfterCurrent = false;
+            StopAfterQueue = false;
+            ShutDownAfterQueue = false;
         }
 
         public void ShowExtendedMenu()
@@ -141,6 +199,16 @@ namespace SpottyStop.Pages
             StopAfterCurrent = false;
         }
 
+        public void Handle(ShutDownAfterQueueHappened message)
+        {
+            ShutDownAfterQueue = false;
+        }
+
+        public void Handle(StopAfterQueueHappened message)
+        {
+            StopAfterQueue = false;
+        }
+
         private async Task SetToolTipText()
         {
             if (ShutDownAfterCurrent)
@@ -150,12 +218,22 @@ namespace SpottyStop.Pages
                 return;
             }
 
+            if (ShutDownAfterQueue)
+            {
+                ToolTipText = $"Shutting down after queue";
+                return;
+            }
+
             if (StopAfterCurrent)
             {
-
-
                 var track = await _spotify.GetPlayingTrack();
                 ToolTipText = $"Stopping after: {track.Artists[0].Name} - {track.Name}";
+                return;
+            }
+
+            if (StopAfterQueue)
+            {
+                ToolTipText = $"Stopping after queue";
                 return;
             }
 
@@ -170,9 +248,21 @@ namespace SpottyStop.Pages
                 return;
             }
 
+            if (ShutDownAfterQueue)
+            {
+                AppState = AppState.ShutDownAfterQueue;
+                return;
+            }
+
             if (StopAfterCurrent)
             {
                 AppState = AppState.StopAfterCurrent;
+                return;
+            }
+
+            if (StopAfterQueue)
+            {
+                AppState = AppState.StopAfterQueue;
                 return;
             }
 

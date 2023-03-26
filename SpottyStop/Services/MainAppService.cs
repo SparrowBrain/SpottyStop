@@ -27,14 +27,24 @@ namespace SpottyStop.Services
             _spotify = spotify;
         }
 
-        public async Task QueueShutDown(CancellationToken token)
+        public async Task ScheduleShutdownAfterCurrent(CancellationToken token)
         {
-            await _genericDelayedActionRunner.InvokeAfterDelayInParallel(GetRemainingSongTime, ShutDown, token);
+            await _genericDelayedActionRunner.InvokeAfterDelayInParallel(GetRemainingSongTime, ShutDown<ShutDownAfterSongHappened>, token);
         }
 
-        public async Task QueueStop(CancellationToken token)
+        public async Task ScheduleStopAfterCurrent(CancellationToken token)
         {
-            await _genericDelayedActionRunner.InvokeAfterDelayInParallel(GetRemainingSongTime, Stop, token);
+            await _genericDelayedActionRunner.InvokeAfterDelayInParallel(GetRemainingSongTime, Stop<StopAfterSongHappened>, token);
+        }
+
+        public async Task ScheduleShutdownAfterQueue(CancellationToken token)
+        {
+            await _genericDelayedActionRunner.InvokeAfterDelayInParallel(GetRemainingQueueTime, ShutDown<ShutDownAfterQueueHappened>, token);
+        }
+
+        public async Task ScheduleStopAfterQueue(CancellationToken token)
+        {
+            await _genericDelayedActionRunner.InvokeAfterDelayInParallel(GetRemainingQueueTime, Stop<StopAfterQueueHappened>, token);
         }
 
         private Task<int> GetRemainingSongTime()
@@ -42,17 +52,22 @@ namespace SpottyStop.Services
             return _actionDelayRetriever.GetRemainingSongTimeInMs();
         }
 
-        private async Task ShutDown()
+        private Task<int> GetRemainingQueueTime()
+        {
+            return _actionDelayRetriever.GetRemainingQueueTimeInMs();
+        }
+
+        private async Task ShutDown<T>() where T : new() 
         {
             await _spotify.PausePlayback();
             _computer.Shutdown();
-            _eventAggregator.PublishOnUIThread(new ShutDownAfterSongHappened());
+            _eventAggregator.PublishOnUIThread(new T());
         }
 
-        private async Task Stop()
+        private async Task Stop<T>() where T : new() 
         {
             await _spotify.PausePlayback();
-            _eventAggregator.PublishOnUIThread(new StopAfterSongHappened());
+            _eventAggregator.PublishOnUIThread(new T());
         }
     }
 }

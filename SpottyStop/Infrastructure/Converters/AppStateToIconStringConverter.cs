@@ -29,6 +29,14 @@ namespace SpottyStop.Infrastructure.Converters
                     icon = "/Icons/7108_shutdown.ico";
                     break;
 
+                case AppState.StopAfterQueue:
+                    icon = "/Icons/7108_stop_queue.ico";
+                    break;
+
+                case AppState.ShutDownAfterQueue:
+                    icon = "/Icons/7108_shutdown_queue.ico";
+                    break;
+
                 default:
                     icon = "/Icons/7108.ico";
                     break;

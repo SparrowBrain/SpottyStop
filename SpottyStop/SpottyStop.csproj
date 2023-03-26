@@ -7,6 +7,10 @@
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Icons\7108_shutdown_queue.ico" />
+    <None Remove="Icons\7108_stop_queue.ico" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="Icons\7108.ico" />
   </ItemGroup>
   <ItemGroup>
@@ -14,9 +18,11 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Icons\7108_shutdown.ico" />
+    <Resource Include="Icons\7108_shutdown_queue.ico" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Icons\7108_stop.ico" />
+    <Resource Include="Icons\7108_stop_queue.ico" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />

@@ -12,5 +12,6 @@ namespace SpottyStop.Services
         Task PausePlayback();
 
         Task Authenticate();
+        Task<QueueResponse> GetQueue();
     }
 }

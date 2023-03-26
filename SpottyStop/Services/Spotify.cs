@@ -43,6 +43,11 @@ namespace SpottyStop.Services
             return await TrySpotify(() => _spotifyClient.Player.GetCurrentPlayback());
         }
 
+        public async Task<QueueResponse> GetQueue()
+        {
+            return await TrySpotify(() => _spotifyClient.Player.GetQueue());
+        }
+
         public async Task PausePlayback()
         {
             await TrySpotify(() => _spotifyClient.Player.PausePlayback());

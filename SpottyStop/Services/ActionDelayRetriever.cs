@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using SpotifyAPI.Web;
 
@@ -23,6 +24,15 @@ namespace SpottyStop.Services
             }
 
             return track.DurationMs - context.ProgressMs;
+        }
+
+        public async Task<int> GetRemainingQueueTimeInMs()
+        {
+            var queue = await _spotify.GetQueue();
+            var queueDuration = queue.Queue.Select(x => x as FullTrack).Where(x => x != null).Sum(x => x.DurationMs);
+            var remainingInCurrentSong = await GetRemainingSongTimeInMs();
+
+            return queueDuration + remainingInCurrentSong;
         }
     }
 }

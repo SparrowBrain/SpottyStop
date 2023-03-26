@@ -28,7 +28,7 @@ namespace SpottyStop.UnitTests.Services
                 });
 
             // Act
-            await sut.QueueShutDown(CancellationToken.None);
+            await sut.ScheduleShutdownAfterCurrent(CancellationToken.None);
 
             // Assert
             actionDelayRetrieverMock.Verify(x => x.GetRemainingSongTimeInMs());
@@ -50,7 +50,7 @@ namespace SpottyStop.UnitTests.Services
                 });
 
             // Act
-            await sut.QueueShutDown(CancellationToken.None);
+            await sut.ScheduleShutdownAfterCurrent(CancellationToken.None);
 
             // Assert
             computerMock.Verify(x => x.Shutdown());
@@ -72,7 +72,7 @@ namespace SpottyStop.UnitTests.Services
                 });
 
             // Act
-            await sut.QueueShutDown(CancellationToken.None);
+            await sut.ScheduleShutdownAfterCurrent(CancellationToken.None);
 
             // Assert
             spotifyMock.Verify(x => x.PausePlayback());
@@ -94,7 +94,7 @@ namespace SpottyStop.UnitTests.Services
                 });
 
             // Act
-            await sut.QueueShutDown(CancellationToken.None);
+            await sut.ScheduleShutdownAfterCurrent(CancellationToken.None);
 
             // Assert
             eventAggregatorMock.Verify(x => x.PublishWithDispatcher(It.IsAny<ShutDownAfterSongHappened>(), It.IsAny<Action<Action>>()));
@@ -116,7 +116,7 @@ namespace SpottyStop.UnitTests.Services
                 });
 
             // Act
-            await sut.QueueStop(CancellationToken.None);
+            await sut.ScheduleStopAfterCurrent(CancellationToken.None);
 
             // Assert
             actionDelayRetrieverMock.Verify(x => x.GetRemainingSongTimeInMs());
@@ -138,7 +138,7 @@ namespace SpottyStop.UnitTests.Services
                 });
 
             // Act
-            await sut.QueueStop(CancellationToken.None);
+            await sut.ScheduleStopAfterCurrent(CancellationToken.None);
 
             // Assert
             spotifyMock.Verify(x => x.PausePlayback());
@@ -160,7 +160,7 @@ namespace SpottyStop.UnitTests.Services
                 });
 
             // Act
-            await sut.QueueStop(CancellationToken.None);
+            await sut.ScheduleStopAfterCurrent(CancellationToken.None);
 
             // Assert
             eventAggregatorMock.Verify(x => x.PublishWithDispatcher(It.IsAny<StopAfterSongHappened>(), It.IsAny<Action<Action>>()));

@@ -3,15 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         xmlns:converters1="clr-namespace:SpottyStop.Infrastructure.Converters"
+        xmlns:s="https://github.com/canton7/Stylet"
         WindowStyle="None"
         Width="0"
         Height="0"
         ShowActivated="False"
         ShowInTaskbar="False"
         Visibility="Hidden"
-        Background = "Transparent"
-        AllowsTransparency = "True"
-        xmlns:s="https://github.com/canton7/Stylet">
+        Background="Transparent"
+        AllowsTransparency="True">
     <Grid>
         <tb:TaskbarIcon
 
@@ -26,6 +26,9 @@
                 <ContextMenu>
                     <MenuItem Header="Stop after current"  IsCheckable="True" IsChecked="{Binding Path=StopAfterCurrent, Mode=TwoWay}" />
                     <MenuItem Header="Shut down after current" IsCheckable="True" IsChecked="{Binding Path=ShutDownAfterCurrent, Mode=TwoWay}" />
+                    <Separator Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
+                    <MenuItem Header="Stop after queue" IsCheckable="True" IsChecked="{Binding Path=StopAfterQueue, Mode=TwoWay}" Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
+                    <MenuItem Header="Shut down after queue" IsCheckable="True" IsChecked="{Binding Path=ShutDownAfterQueue, Mode=TwoWay}" Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />
                     <Separator />
                     <MenuItem Header="Clear selection" Click="{s:Action ClearSelectionClick}" />
                     <Separator Visibility="{Binding Path=ExtendedMenu, Converter={converters1:BoolToCollapsedVisibilityConverter}}" />

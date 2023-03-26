@@ -5,6 +5,8 @@
         NotConnected,
         Nothing,
         StopAfterCurrent,
-        ShutDownAfterCurrent
+        ShutDownAfterCurrent,
+        StopAfterQueue,
+        ShutDownAfterQueue,
     }
 }
