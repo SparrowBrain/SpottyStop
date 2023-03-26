@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using AutoFixture.Xunit2;
 using Moq;
-using SpotifyAPI.Web.Models;
+using SpotifyAPI.Web;
 using SpottyStop.Services;
 using Xunit;
 
@@ -31,11 +31,13 @@ namespace SpottyStop.UnitTests.Services
         [AutoMoqData]
         public async Task GetRemainingSongTimeInMs_ReturnsRemainingSongTime_WhenGettingPlaybackSucceeds(
             [Frozen] Mock<ISpotify> spotifyMock,
-            PlaybackContext playbackContext,
+            CurrentlyPlayingContext playbackContext,
+            FullTrack track,
             ActionDelayRetriever sut)
         {
             // Arrange
-            playbackContext.Item.DurationMs = 500;
+            track.DurationMs = 500;
+            playbackContext.Item = track;
             playbackContext.ProgressMs = 200;
             spotifyMock.Setup(x => x.GetPlayback()).ReturnsAsync(playbackContext);
 

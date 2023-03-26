@@ -59,7 +59,7 @@ namespace SpottyStop.Pages
                 }
 
                 SetAppState();
-                SetToolTipText().Wait();
+                Task.Run(SetToolTipText);
                 NotifyOfPropertyChange();
             }
         }
@@ -86,7 +86,7 @@ namespace SpottyStop.Pages
                 }
 
                 SetAppState();
-                SetToolTipText().Wait();
+                Task.Run(SetToolTipText);
                 NotifyOfPropertyChange();
             }
         }
@@ -152,6 +152,8 @@ namespace SpottyStop.Pages
 
             if (StopAfterCurrent)
             {
+
+
                 var track = await _spotify.GetPlayingTrack();
                 ToolTipText = $"Stopping after: {track.Artists[0].Name} - {track.Name}";
                 return;

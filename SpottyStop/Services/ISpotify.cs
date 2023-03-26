@@ -1,13 +1,16 @@
 ﻿using System.Threading.Tasks;
-using SpotifyAPI.Web.Models;
+using SpotifyAPI.Web;
 
 namespace SpottyStop.Services
 {
     public interface ISpotify
     {
         Task<FullTrack> GetPlayingTrack();
-        Task<PlaybackContext> GetPlayback();
+
+        Task<CurrentlyPlayingContext> GetPlayback();
+
         Task PausePlayback();
+
         Task Authenticate();
     }
 }

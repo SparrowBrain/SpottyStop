@@ -1,17 +1,4 @@
-﻿using SpotifyAPI.Web;
-using SpotifyAPI.Web.Auth;
-using SpotifyAPI.Web.Enums;
-using SpotifyAPI.Web.Models;
-using SpottyStop.Annotations;
-using SpottyStop.Infrastructure;
-using System;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Input;
+﻿using System.Windows;
 
 namespace SpottyStop.Pages
 {
@@ -20,7 +7,6 @@ namespace SpottyStop.Pages
     /// </summary>
     public partial class ShellView : Window
     {
-
         public ShellView()
         {
             InitializeComponent();
@@ -30,8 +16,5 @@ namespace SpottyStop.Pages
         {
             Application.Current.Shutdown();
         }
-
-
-
     }
 }

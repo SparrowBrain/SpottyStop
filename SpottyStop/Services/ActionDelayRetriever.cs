@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
+using SpotifyAPI.Web;
 
 namespace SpottyStop.Services
 {
@@ -14,7 +16,13 @@ namespace SpottyStop.Services
         public async Task<int> GetRemainingSongTimeInMs()
         {
             var context = await _spotify.GetPlayback();
-            return context.Item.DurationMs - context.ProgressMs;
+            var track = context.Item as FullTrack;
+            if (track == null)
+            {
+                throw new Exception("Not a track");
+            }
+
+            return track.DurationMs - context.ProgressMs;
         }
     }
 }

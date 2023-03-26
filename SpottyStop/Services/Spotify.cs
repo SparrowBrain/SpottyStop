@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using SpotifyAPI.Web;
-using SpotifyAPI.Web.Auth;
-using SpotifyAPI.Web.Enums;
-using SpotifyAPI.Web.Models;
 using SpottyStop.Infrastructure.Events;
 using Stylet;
 
@@ -11,8 +14,13 @@ namespace SpottyStop.Services
 {
     internal class Spotify : ISpotify
     {
-        private SpotifyWebAPI _spotifyWebApi;
+        private const string ClientId = "1bb1fc7f880443138e22068f49da7446";
+        private SemaphoreSlim _authenticationStartSemaphore = new SemaphoreSlim(1, 1);
+        private SemaphoreSlim _authenticationInProgressSemaphore;
+        private string _verifier;
+        private SpotifyClient _spotifyClient;
         private readonly IEventAggregator _eventAggregator;
+        private Regex _regex = new Regex(@"\/\?code=(?<code>[^\s]+)");
 
         public Spotify(IEventAggregator eventAggregator)
         {
@@ -21,30 +29,78 @@ namespace SpottyStop.Services
 
         public async Task<FullTrack> GetPlayingTrack()
         {
-            return await TrySpotify(() => _spotifyWebApi.GetPlayingTrack().Item);
+            return await TrySpotify(async () =>
+            {
+                var track = (FullTrack)(await _spotifyClient.Player.GetCurrentlyPlaying(new PlayerCurrentlyPlayingRequest(PlayerCurrentlyPlayingRequest.AdditionalTypes.Track))).Item;
+                return track;
+            });
         }
 
-        public async Task<PlaybackContext> GetPlayback()
+        public async Task<CurrentlyPlayingContext> GetPlayback()
         {
-            return await TrySpotify(() => _spotifyWebApi.GetPlayback());
+            return await TrySpotify(() => _spotifyClient.Player.GetCurrentPlayback());
         }
 
         public async Task PausePlayback()
         {
-            await TrySpotify(() => _spotifyWebApi.PausePlayback());
+            await TrySpotify(() => _spotifyClient.Player.PausePlayback());
         }
 
-        private async Task<SpotifyWebAPI> RunAuthentication()
+        public async Task Authenticate()
         {
-            WebAPIFactory webApiFactory = new WebAPIFactory(
-                "http://localhost",
-                8000,
-                "1bb1fc7f880443138e22068f49da7446",
-                Scope.UserReadPlaybackState | Scope.UserModifyPlaybackState);
+            await _authenticationStartSemaphore.WaitAsync();
+            if (_spotifyClient != null)
+            {
+                return;
+            }
 
             try
             {
-                return await webApiFactory.GetWebApi();
+                var (verifier, challenge) = PKCEUtil.GenerateCodes();
+                _verifier = verifier;
+
+                var loginRequest = new LoginRequest(
+                    new Uri("http://localhost:8000/"),
+                    ClientId,
+                    LoginRequest.ResponseType.Code
+                )
+                {
+                    CodeChallengeMethod = "S256",
+                    CodeChallenge = challenge,
+                    Scope = new[] { Scopes.UserReadPlaybackState, Scopes.UserModifyPlaybackState }
+                };
+                var uri = loginRequest.ToUri();
+
+#pragma warning disable CS4014
+                Task.Run(async () =>
+#pragma warning restore CS4014
+                {
+                    var tcp = new TcpListener(IPAddress.Loopback, 8000);
+                    tcp.Start();
+                    using var tcpClient = await tcp.AcceptTcpClientAsync();
+                    await using var stream = tcpClient.GetStream();
+                    using var streamReader = new StreamReader(stream);
+
+                    while (true)
+                    {
+                        var incoming = await streamReader.ReadLineAsync();
+
+                        var match = _regex.Match(incoming);
+                        if (match.Success)
+                        {
+                            var code = match.Groups["code"].Value;
+                            await GetCallback(code);
+                            await RespondOk(tcpClient);
+                            tcp.Stop();
+                            return;
+                        }
+                    }
+                });
+
+                _authenticationInProgressSemaphore?.Dispose();
+                _authenticationInProgressSemaphore = new SemaphoreSlim(0, 1);
+                Process.Start(new ProcessStartInfo(uri.ToString()) { UseShellExecute = true });
+                await _authenticationInProgressSemaphore.WaitAsync();
             }
             catch (Exception ex)
             {
@@ -52,30 +108,69 @@ namespace SpottyStop.Services
                 _eventAggregator.PublishOnUIThread(new ErrorHappened() { Text = ex.Message });
                 throw;
             }
+            finally
+            {
+                _authenticationStartSemaphore.Release();
+            }
         }
 
-        public async Task Authenticate()
+        private static async Task RespondOk(TcpClient tcpClient)
         {
-            _spotifyWebApi = await RunAuthentication();
+            await using var writer = new StreamWriter(tcpClient.GetStream());
+            await writer.WriteAsync("HTTP/1.0 200 OK");
+            await writer.WriteAsync(Environment.NewLine);
+            await writer.WriteAsync("Content-Type: text/plain; charset=UTF-8");
+            await writer.WriteAsync(Environment.NewLine);
+            await writer.WriteAsync("Content-Length: " + 0);
+            await writer.WriteAsync(Environment.NewLine);
+            await writer.WriteAsync(Environment.NewLine);
+            await writer.FlushAsync();
         }
 
-        private async Task<T> TrySpotify<T>(Func<T> spotifyAction) where T : BasicModel
+        public async Task GetCallback(string code)
         {
             try
             {
-                if (_spotifyWebApi == null)
+                // Note that we use the verifier calculated above!
+                var initialResponse =
+                    await new OAuthClient().RequestToken(new PKCETokenRequest(ClientId, code,
+                        new Uri("http://localhost:8000/"), _verifier));
+
+                var authenticator = new PKCEAuthenticator(ClientId, initialResponse);
+
+                var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator);
+                _spotifyClient = new SpotifyClient(config);
+            }
+            finally
+            {
+                _authenticationInProgressSemaphore.Release(1);
+            }
+        }
+
+        private async Task<T> TrySpotify<T>(Func<Task<T>> spotifyAction)
+        {
+            try
+            {
+                if (_spotifyClient == null)
                 {
                     await Authenticate();
                 }
 
-                var result = spotifyAction.Invoke();
-                if (result.HasError() && result.Error.Status == 401)
+                return await spotifyAction.Invoke();
+            }
+            catch (APIUnauthorizedException)
+            {
+                try
                 {
+                    _spotifyClient = null;
                     await Authenticate();
-                    result = spotifyAction.Invoke();
+                    return await spotifyAction.Invoke();
                 }
-
-                return result;
+                catch (Exception ex)
+                {
+                    _eventAggregator.PublishOnUIThread(new ErrorHappened { Text = ex.Message });
+                    throw;
+                }
             }
             catch (Exception ex)
             {
