@@ -6,7 +6,6 @@ using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using SpotifyAPI.Web;
 using SpottyStop.Infrastructure.Events;
 using Stylet;
@@ -16,7 +15,6 @@ namespace SpottyStop.Services
     internal class Spotify : ISpotify
     {
         private const string ClientId = "1bb1fc7f880443138e22068f49da7446";
-        private const string RefreshTokenFile = "token.json";
         private SemaphoreSlim _authenticationStartSemaphore = new SemaphoreSlim(1, 1);
         private SemaphoreSlim _authenticationInProgressSemaphore;
         private string _verifier;
@@ -59,24 +57,6 @@ namespace SpottyStop.Services
             if (_spotifyClient != null)
             {
                 return;
-            }
-
-            if (File.Exists(RefreshTokenFile))
-            {
-                try
-                {
-                    var refreshToken = await File.ReadAllTextAsync(RefreshTokenFile);
-                    var initialResponse = JsonConvert.DeserializeObject<PKCETokenResponse>(refreshToken);
-
-                    var authenticator = new PKCEAuthenticator(ClientId, initialResponse);
-                    var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator);
-                    _spotifyClient = new SpotifyClient(config);
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    File.Delete(RefreshTokenFile);
-                }
             }
 
             try
@@ -161,8 +141,6 @@ namespace SpottyStop.Services
                         new Uri("http://localhost:8000/"), _verifier));
 
                 var authenticator = new PKCEAuthenticator(ClientId, initialResponse);
-                await File.WriteAllTextAsync(RefreshTokenFile, JsonConvert.SerializeObject(initialResponse));
-
                 var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator);
                 _spotifyClient = new SpotifyClient(config);
             }
