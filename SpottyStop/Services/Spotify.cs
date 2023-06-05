@@ -6,6 +6,7 @@ using SpotifyAPI.Web.Enums;
 using SpotifyAPI.Web.Models;
 using SpottyStop.Infrastructure.Events;
 using Stylet;
+using FullTrack = SpotifyAPI.Web.Models.FullTrack;
 
 namespace SpottyStop.Services
 {
